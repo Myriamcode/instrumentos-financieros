@@ -1,0 +1,677 @@
+---
+title: "ANALISIS DE INSTRUMENTOS FINANCIEROS"
+author: "Mirian Yanet"
+date: "23/10/2020"
+output:
+  word_document: default
+  html_document: default
+---
+Usaremos la base de datos de Yahoo finance 
+
+https://finance.yahoo.com/quote/DNKN/history?p=DNKN
+
+Instrumento financiero ZooM
+Precios vs Retornos:
+Instalamos algunos paquetes (librerias)
+install.packages('tseries')
+```{r}
+
+library(tseries)
+```
+```{r}
+install.packages('tseries')
+library(tseries)
+```
+
+Este comando sirve para instalar paquetes, en este caso se ha instalado el paquete tseries.
+
+```{r}
+precioszm = get.hist.quote(instrument = "ZM",quote=c("Cl"))
+plot(precioszm)
+View(precioszm)
+```
+Interpretación: Los precios de Zoom presentan una tendencia a las alzas y bajas, pero vemos que el 2020 el precio de Zoom ha ido en aumento. 
+```{r}
+pdiferenciazm = diff(precioszm)
+```
+El comando diff sirve para diferenciar una serie
+```{r}
+View(pdiferenciazm)
+plot(pdiferenciazm)
+```
+Interpretación: La primera diferencia Zoom en promedio es estacionario, con  pérdidas de 20 dólares y ganancias de cerca de 30 dólares.
+
+Graficando en paralelo:
+```{r}
+par(mfrow=c(1,2))
+plot(precioszm)
+plot(pdiferenciazm)
+
+```
+Interpretación: Los precios presentan cambios en tendencia subidas y bajadas, la primeradiferencia presenta caidas de 20 dólares y ganancias de 30 dólares. 
+
+```{r}
+retornozm = diff(log(precioszm))
+View(retornozm)
+```
+```{r}
+par(mfrow=c(1,2))
+plot(precioszm)
+plot(retornozm)
+```
+Interpretación: Los precios de Zoom presentan tendencias a las altas y bajas. El retorno de Zoom en promedio es estacionario con una desviación de 0.0 a 0.1. Observamos que el 2020 ha presentado una alza de 20 % por el aumento en el uso de esta aplicación y pérdidas de 10%. 
+
+```{r}
+par(mfrow=c(1,3))
+plot(precioszm, main="Precios de ZM")
+plot(pdiferenciazm,main="Primera diferencia ZM")
+plot(retornozm,main="Retorno ZM")
+```
+Interpretación: Observamos que los precioszm presentan cambios en tendencia, con alzas y bajas (drifts). Por otro lado la primera diferenciazm y el retornozm presentan una caída estrepitosa por el covid19 en el 2020.Sin embargo son más estables y estacionarias, con una media en promedio cerca a cero y donde la desviación esta entre 0 a 1.La primera diferenciazm alcanza pérdidas en montos de -20 y ganancias de 30. Por otro lado el retornozm es muy volátil y con fuertes caídas cerca de 10 % y ganancias cerca de 20%.
+```{r}
+par(mfrow=c(1,3))
+hist(as.ts(precioszm))
+hist(as.ts(pdiferenciazm))
+hist(as.ts(retornozm))
+```
+Interpretación: Observamos que las primeras diferenciaszm y el retornozm son leptocúrticas(hay una gran concentración en lugares pequeños) y se distribuyen como una t de student y donde la kurtosis es mayor a 3 .La primera diferenciazm es asimétrica ala derecha s>0 y el retorno zm es simétrica con s=0. Los precioszm presentan una distribucion log normal y presenta una asimetria positiva s>0.
+
+El comando as.ts se lee: "como serie de tiempo" y convierte cualquier objeto en una serie temporal
+
+modelando los retornos considerando Box Jenkins
+Paso 1: Ver si los precioszm son Estacionarios o no?
+```{r}
+par(mfrow=c(1,2))
+plot(precioszm)
+plot(retornozm)
+```
+Interpretación: Graficamente vemos que el precioZm no es estacionario,pero usaremos un test de Raiz unitaria para determinar si este precio tiene Raiz unitaria.Por otro lado el retornozm es muy vólatil y con una desviación muy cambiante.
+```{r}
+adf.test(precioszm)
+```
+Recordar: Si el p-value es "menor que 0.05" entonces se RECHAZA la "Ho" Hipótesis Nula
+
+Donde 
+ho:No es estacionario
+Ha:Es estacionario
+Vemos que el p-value es mayor a 0.05 entonces ACEPTO la nula o lo que e equivalente, RECHAZO la Alternativa
+Como el R confirma:
+Rechazo la ESTACIONARIEDAD
+Por lo tanto segun el test de ADF Dickey-Fuller Aumentado 
+Los precios no son estacionarios!!
+
+ Mostrar segun el ADF si los retornos son estacionarios:
+```{r}
+adf.test(retornozm)
+```
+ Rpta: Los retorno son estacionarios
+
+Los precios son Integrados de Orden 1 , I(1)     esto quiere decir que "d=1" donde d es el orden de integrar, las veces que debemos de diferenciar para volver estacionaria una serie.
+Porque le hemos tomado una primera diferencia PD= P_t - P{t-1}
+Los retornos son la Primera diferencia  en porcentajes
+Estos retornos son estacionarios
+Esto quiere decir que solo bastó tomar 1 diferencia para estacionarizar los precios.
+
+¿Tienes tu serie estacionaria? Retornos: ARMA(p,q)
+artificio
+```{r}
+preciozm=as.numeric(precioszm)
+pdzm=diff(preciozm)
+preciozm=diffinv(pdzm)
+pdzm=diff(preciozm)
+
+```
+
+En finanzas de mercado lo sresiduos de los modelos de las PDs o Retornos siempre son Heterocedásiticos  porque están afectados por especulación y aun asi es recomendable ver la FAS y FAP para tener en cuenta, el orden p y q del ARMA(p,q)
+```{r}
+acf(pdzm) 
+```
+```{r}
+pacf(pdzm)
+```
+
+acf(pdzm) # Ver el q del ARMA(p,q), la parte MA(q)
+ MA(q) = q = 1,2,4
+pacf(pdzm) # Ver el p del ARMA(p,q), la parte AR(p)
+AR(p) = p = 2,4
+
+```{r}
+modelo1zm=arma(pdzm,order = c(4,4))
+summary(modelo1zm)
+```
+
+
+```{r}
+modelo2zm=arma(pdzm,order = c(4,2))
+summary(modelo2zm)
+```
+```{r}
+modelo3zm=arma(pdzm,order = c(4,1))
+summary(modelo3zm)
+```
+```{r}
+modelo4zm=arma(pdzm,order = c(2,1))
+summary(modelo4zm)
+```
+```{r}
+modelo5zm =arma(pdzm,order = c(2,2))
+summary(modelo5zm)
+
+```
+
+```{r}
+modelo6zm=arma(pdzm,order = c(2,4))
+summary(modelo6zm)
+```
+
+
+Elegimos el mejor modelo
+summary(modelo1zm)
+AIC = 1985.52
+summary(modelo2zm)
+AIC =  1981.52
+summary(modelo3zm)
+ AIC = 1979.83
+summary(modelo4zm)
+AIC = 1981.81
+summary(modelo5zm)
+AIC = 1979.36
+summary(modelo6zm)
+AIC = 1981.47
+
+hasta el momento el ARMA(2,2) es el mejor modelo modelo
+
+
+Instrumento financiero AAPL
+Precios vs Retornos:
+Instalamos algunos paquetes (librerias)
+install.packages('tseries')
+library(tseries)
+
+Este comando sirve para instalar paquetes, en este caso se ha instalado el paquete tseries.
+
+```{r}
+preciosAAPL = get.hist.quote(instrument = "AAPL",quote=c("Cl"))
+plot(preciosAAPL)
+?get.hist.quote
+View(preciosAAPL)
+```
+Interpretación: Los precios AAPL presentan cambios en tendencia con alzas y bajas. 
+```{r}
+pdiferenciaAAPL = diff(preciosAAPL)
+```
+El comando diff sirve para diferenciar una serie
+```{r}
+View(pdiferenciaAAPL)
+plot(pdiferenciaAAPL)
+```
+Interpretación: La primera diferencia es estacionario en media con fuerte caida de 30 dólares en el 2020 por el COVID19.
+
+Graficando en paralelo:
+```{r}
+par(mfrow=c(1,2))
+plot(preciosAAPL)
+plot(pdiferenciaAAPL)
+
+
+```
+Interpretación: Los precios AAPL presentan cambios en tendencias(drifts) y la primera diferencia AAPL es estacionario en media con fuertes caidas en el 2020 por el COVID19 de 30 dólares. 
+```{r}
+retornoAAPL = diff(log(preciosAAPL))
+View(retornoAAPL)
+```
+```{r}
+par(mfrow=c(1,2))
+plot(preciosAAPL)
+plot(retornoAAPL)
+```
+Interpretación: Los precios AAPL presentan tendencias a las alzas y bajas, el retorno AAPL es estacionario en media con una fuerte caida de 60% en el 2000 por las crisis del puntocom.
+```{r}
+par(mfrow=c(1,3))
+plot(preciosAAPL, main="Precios de ZM")
+plot(pdiferenciaAAPL,main="Primera diferencia AAPL")
+plot(retornoAAPL,main="Retorno de AAPL")
+```
+Interpretación:  Observamos que los preciosAAPL presentan cambios en tendencia, con alzas y bajas (drifts). Por otro lado la primera diferenciaAAPL y el retornoAAPL  presentan una caída estrepitosa por el covid19 en el 2020 .Sin embargo son más estables y estacionarias, con una media en promedio cerca a cero y donde la desviación esta entre 0 a 1.La primera diferenciaAAPL alcanza pérdidas en montos de -30 y ganancias de 20. Por otro lado el retornoAAPL  es muy volátil y con fuertes caídas  de 60 % en el 2000 por la crisis del puntocom  y ganancias cerca de 20%.
+```{r}
+par(mfrow=c(1,3))
+hist(as.ts(preciosAAPL,main="Precios de ZM"))
+hist(as.ts(pdiferenciaAAPL,main="Primera diferencia AAPL"))
+hist(as.ts(retornoAAPL,main="Retorno AAPL"))
+```
+Interpretación: Observamos que las primeras diferenciasAAPL y el retornoAAPL  son leptocúrticas(hay una gran concentración en lugares pequeños) y se distribuyen como una t de student y donde la kurtosis es mayor a 3 y son asimétricas a la izquierda s<0 .Los preciosAAPL presentan una distribución log normal y presenta una asimétria positiva s>0.
+
+El comando as.ts se lee: "como serie de tiempo" y convierte cualquier objeto en una serie temporal
+```{r}
+adf.test(preciosAAPL)
+```
+```{r}
+adf.test(retornoAAPL)
+```
+Donde 
+ho:No es estacionario
+Ha:Es estacionario
+Recordar: Si el p-value es "menor que 0.05" entonces se RECHAZA la "Ho" Hipótesis Nula
+Conclusión: Los preciosAAPL son no estacionarios y el retornoAAPL si es estacionario
+¿Tienes tu serie estacionaria?
+ Retornos: ARMA(p,q)
+Artificio
+```{r}
+ 
+precioAAPL=as.numeric(preciosAAPL)
+pdAAPL=diff(precioAAPL)
+precioAAPL=diffinv(pdAAPL)
+pdAAPL=diff(precioAAPL)
+
+```
+
+```{r}
+acf(pdAAPL)
+```
+Interpretación: Se observa que la ACF los números que salen de las bandas son 1,2,3,6,7,8,9,10.
+```{r}
+pacf(pdAAPL)
+```
+Interpretación: Observamos en la PACF los números que salen de las bandas son 1,2,5,6,7,8.
+```{r}
+p<- 1:4
+q<- 1:3
+ata=NULL
+datos=NULL
+ata3=NULL
+for(i in p){
+  for(a in q){
+    ata1=print(summary(arma(pdAAPL,order = c(i,a)))$aic)
+    ata=c(ata1,ata)
+    ata2=paste(i,a)
+    ata3=c(ata3,ata2)
+    datos=data.frame("ARMA"=ata3,"AIC"=ata)
+    print(datos)
+  }
+}
+```
+El mejor modelo ARMA(4,2) esel que tiene el AIC=28417.79
+--------------------------------------
+
+Instrumento financiero MSFT
+Precios vs Retornos:
+Instalamos algunos paquetes (librerias)
+
+install.packages('tseries')
+library(tseries)
+
+Este comando sirve para instalar paquetes, en este caso se ha instalado el paquete tseries.
+
+```{r}
+preciosMSFT = get.hist.quote(instrument = "MSFT",quote=c("Cl"))
+plot(preciosMSFT)
+?get.hist.quote
+View(preciosMSFT)
+```
+Interpretación: Los precios MSFT presentan tendencias a las alzas y bajas.
+```{r}
+pdiferenciaMSFT = diff(preciosMSFT)
+```
+El comando diff sirve para diferenciar una serie
+```{r}
+
+plot(pdiferenciaMSFT)
+```
+Interpretación: La primera diferenciaMSFT es estacionaria en media, con una gran caida en el 2020 por el Covid19.
+Graficando en paralelo:
+```{r}
+par(mfrow=c(1,2))
+plot(preciosMSFT)
+plot(pdiferenciaMSFT)
+
+```
+Interpretación: Los precios de MSFT presentan cambios en tendencia(DRIFT) hay alzas y bajas por otro lado la primera diferenciaMSFT es estacionario en media, pero es muy volátil con fuerte caida en el 2000 por la crisis del puntocom y el 2020 por el COvid19. Con ganancias y pérdidas de 20 dólares.
+```{r}
+retornoMSFT = diff(log(preciosMSFT))
+View(retornoMSFT)
+```
+```{r}
+par(mfrow=c(1,2))
+plot(preciosMSFT)
+plot(retornoMSFT)
+```
+Interpretación: Los precios de MSFT presentan cambios en tendencia(DRIFT) hay alzas y bajas por otro lado el retornoMSFT es estacionario en media, pero es muy volátil con fuerte caida en el 2000 por la crisis del puntocom y el 2020 por el COvid19. Con ganancias y pérdidas de 15%.
+```{r}
+par(mfrow=c(1,3))
+plot(preciosMSFT, main="Precios de MSFT")
+plot(pdiferenciaMSFT,main="Primera diferencia MSFT")
+plot(retornoMSFT,main="Retorno de MSFT")
+```
+Interpretación: Observamos que los preciosMSFT presentan cambios en tendencia, con alzas y bajas (drifts). Por otro lado la primera diferenciaMSFT y el retornoMSFT presentan una caída estrepitosa por el covid19 en el 2020 y en el 2000 la crisis delas puntocom (internet).Sin embargo son más estables y estacionarias, con una media en promedio cerca a cero y donde la desviación esta entre 0 a 1.la primera diferenciaMSFT alcanza pérdidas en montos de -20 y ganancias de 20. Por otro lado el retornosp500 es muy volátil y con fuertes caídas de 15 % y ganancias cerca de 15%.
+```{r}
+par(mfrow=c(1,3))
+hist(as.ts(preciosMSFT,main="Precios de MSFT"))
+hist(as.ts(pdiferenciaMSFT,main="Primera diferencia MSFT"))
+hist(as.ts(retornoMSFT,main="Retorno MSFT"))
+```
+Interpretación: Observamos que las primeras diferenciasMSFT y el retornoMSFT  son leptocúrtica(hay una gran concentración en lugares pequeños) y se distribuyen como una t de student y donde la kurtosis es mayor a 3 y son simétricas(s=0) y los preciossp500 presentan una distribucion log normal y presenta una asimetria positiva s>0.
+
+El comando as.ts se lee: "como serie de tiempo" y convierte cualquier objeto en una serie temporal
+
+```{r}
+adf.test(preciosMSFT)
+```
+
+```{r}
+adf.test(retornoMSFT)
+```
+Donde 
+ho:No es estacionario
+Ha:Es estacionario
+Recordar: Si el p-value es "menor que 0.05" entonces se RECHAZA la "Ho" Hipótesis Nula
+Conclusión: Los preciosMSFT son no estacionarios y el retornoMSFT si es estacionario
+¿Tienes tu serie estacionaria?
+ Retornos: ARMA(p,q)
+Artificio
+```{r}
+ 
+precioMSFT=as.numeric(preciosMSFT)
+pdMSFT=diff(precioMSFT)
+precioMSFT=diffinv(pdMSFT)
+pdMSFT=diff(precioMSFT)
+```
+```{r}
+acf(pdMSFT)
+```
+Interpretación: Observamos en la ACF que los números que se salen de las bandas son 1,2,3,4,5,6,7,8.
+```{r}
+pacf(pdMSFT)
+```
+Interpretación: Observamos en la PACF quelos números que se salen de las bandas son 1,3,4,6,7,8.
+```{r}
+p<- 1:4
+q<- 1:3
+ata=NULL
+datos=NULL
+ata3=NULL
+for(i in p){
+  for(a in q){
+    ata1=print(summary(arma(pdMSFT,order = c(i,a)))$aic)
+    ata=c(ata1,ata)
+    ata2=paste(i,a)
+    ata3=c(ata3,ata2)
+    datos=data.frame("ARMA"=ata3,"AIC"=ata)
+    print(datos)
+  }
+}
+```
+El mejor modelo ARMA(p,q) es ARMA(1,1) porque presenta un menor AIC =20373.81	.
+
+Indice SP500
+Precios vs Retornos:
+
+Instalamos algunos paquetes (librerias)
+
+
+```{r}
+preciossp500 = get.hist.quote(instrument= "^GSPC",quote=c("Cl"))
+```
+
+get.hist.quote Usamos para descargar los datos desde yahoo finance 
+Donde los más importante es el instrumento en este caso ^GSPC . R solo trabajará con los datos disponibles.
+```{r}
+View(preciossp500)
+```
+Sirve Para ver los valores de la serie,en este caso preciossp500.
+```{r}
+plot(preciossp500)
+```
+
+Interpretación: Observamos que el precio de las 500 empresas mas importantes presentan tendencias al alza y en otros periodos hay caidas.
+
+Primeras diferencias:Nos muestra la variación de precio a  precio
+```{r}
+pdiferenciasp500=diff(preciossp500)
+```
+
+Elcomando diff sirve para diferenciar una serie, en este caso diferenciamos preciossp500
+```{r}
+View(pdiferenciasp500)
+```
+Sirve para ver los datos de la serie pdiferenciasp500
+```{r}
+plot(pdiferenciasp500)
+```
+
+Interpretación: En promedio la primera diferencia SP500 es estacionario, presentando una fuerte caida en el 2020.
+
+Graficando en paralelo:para comparar el comportamiento de las series, en este caso
+preciossp500 y la primera diferenciasp500.
+```{r}
+par(mfrow=c(1,2))
+plot(preciossp500)
+plot(pdiferenciasp500)
+```
+
+par(mfrow=c(1,2))
+Sirve para graficar en una fila en paralelo en este caso en una fila y dos columnas.
+Especificamos quienes son las dos graficas que queremos
+plot(preciossp500)
+Sirve para graficar, en este caso graficamos a los preciossp500
+plot(pdiferenciasp500)
+Usamos para graficar, en este caso la primera diferenciasp500
+
+Interpretación: Observamos que los preciossp500 tienen cambios en tendencia (drift) suben y bajan,los precios se distribuyen como un arima. Observamos que la primera diferenciasp500 es estacionario,en promedio su media tiende a cero y presenta una volatilidad baja, este es un arma porque es estacionario(u=0).
+
+ Calculamos el retorno:Me muestra la variación porcentual
+```{r}
+retornosp500=diff(log(preciossp500))
+```
+Nos sirve para hallar los retornos, que es el logaritmo neperiano de preciossp500.
+
+Graficando en paralelo:Para comparar el comportamiento de las series, en este caso
+la primera diferenciasp500 y el retornosp500.
+```{r}
+par(mfrow=c(1,2))
+plot(pdiferenciasp500)
+plot(retornosp500)
+```
+
+par(mfrow=c(1,2))
+Sirve para graficar en una fila en paralelo en este caso en una fila y dos columnas.
+Especificamos quienes son las dos graficas que queremos
+plot(pdiferenciasp500)
+Sirve para graficar, en este caso graficamos pdiferenciasp500.
+plot(retornosp500)
+Usamos para graficar, en este caso al retornosp500.
+
+Interpretación: Observamos que las series(pdifernciasp500 y retornosp500) son estacionarias,pero difieren en  las escalas, la primera diferencia va de 0 a 100 presentando una caída de -300 y una ganancia de 200; el retorno va de 0.00 a 0.10(cambio porcentual) y es más volátil presentando caídas de -0.10 y ganancias de 0.10 .
+
+Graficando en paralelo:para comparar el comportamiento de las series, en este caso
+los precios,la primera diferencia y el retorno sp500.
+```{r}
+par(mfrow=c(1,3))
+plot(preciossp500,main="precios de sp500")
+plot(pdiferenciasp500,main="primera diferencia sp500")
+plot(retornosp500,main="retorno sp500")
+```
+
+par(mfrow=c(1,3))
+Sirve para graficar en forma conjunta en este caso una fila y tres columnas.
+plot(preciossp500,main="precios de sp500")
+Graficamos y usamos main pa poner el titulo ala imagen,en este caso precios de sp500.
+Observamos que precios sp500 tiene tendencias a las alzas y bajas.
+plot(pdiferenciasp500,main="primera diferencia sp500")
+Sirve para graficar, en este caso graficamos las primeras diferencias con titulo en el gráfico.
+plot(retornosp500,main="retorno sp500")
+Sirve para graficar, en este caso graficamos los retornos incluyendo su titulo .
+
+Interpretación: Observamos que los preciossp500 presentan cambios en tendencia, con alzas y bajas (drifts). Por otro lado la primera diferencia sp500 y el retornosp500 presentan una caída estrepitosa por el covid19 en el 2020 y en el 2007 hay una caída fuerte por la crisis de las deudas subprime y en el 2000 la crisis delas puntocom (internet).Sin embargo son más estables y estacionarias, con una media en promedio cerca a cero y donde la desviación esta entre 0 a 1.la primera diferenciasp500 alcanza pérdidas en montos de -300 y ganancias de 200. Por otro lado el retornosp500 es muy volátil y con fuertes caídas de 12 % y ganancias cerca de 10%.
+
+En forma de histogramas 
+```{r}
+par(mfrow=c(1,3))
+hist(as.ts(preciossp500))
+hist(as.ts(pdiferenciasp500))
+hist(as.ts(retornosp500))
+
+```
+
+par(mfrow=c(1,3))
+Graficar en paralelo en forma de una fila y tres columnas
+hist(as.ts(preciossp500))
+Obtener un histogrma de los precios sp500
+hist(as.ts(pdiferenciasp500))
+Obtener un histograma de las primeras diferenciasp500
+hist(as.ts(retornosp500))
+Obtener un histogrma del retornosp500
+El commando as.ts se lee:"como serie de tiempo"y convierte cualquier objeto en una serie temporal
+
+Interpretación: Observamos que las primeras diferenciassp500 y el retornosp500  son leptocúrtica(hay una gran concentración en lugares pequeños) y se distribuyen como una t de studentporque hay una gran concentración en un lado pequeño y donde la kurtosis es mayor a 3 y son asimetricas a la izquierda s<0 los preciossp500 presentan una distribucion log normal y presenta una asimetria positiva s>0.
+
+```{r}
+adf.test(preciossp500)
+```
+```{r}
+adf.test(retornosp500)
+```
+El preciosp500 no es estacionario, los retornosSP500 si son estacionarios porque el pvalue es menor a 0.05.
+
+usamos un artificio
+```{r}
+preciosp500=as.numeric(preciossp500)
+pdsp500=diff(preciosp500)
+preciosp500=diffinv(pdsp500)
+pdsp500=diff(preciosp500)
+```
+```{r}
+acf(pdsp500)
+```
+Interpretación: Observamos que se salen de las bandas los números 1,2,4,5,6.
+```{r}
+pacf(pdsp500)
+```
+Interpretación: Observamos que se salen de las bandas los números 1,2,4,6,7,8,9.
+
+
+```{r}
+p<- 1:4
+q<- 1:5
+ata=NULL
+datos=NULL
+ata3=NULL
+for(i in p){
+  for(a in q){
+    ata1=print(summary(arma(pdsp500,order = c(i,a)))$aic)
+    ata=c(ata1,ata)
+    ata2=paste(i,a)
+    ata3=c(ata3,ata2)
+    datos=data.frame("ARMA"=ata3,"AIC"=ata)
+    print(datos)
+  }
+}
+```
+El mejor modelo es el ARMA(2,4) porque presenta un menor AIC = 63333.95.
+
+Indice NASDAQ 
+
+ Precios vs Retornos:
+ Instalamos algunos paquetes (librerias)
+install.packages('tseries')
+Este comando sirve para instalar paquetes, en este caso se ha instalado el paquete tseries.
+library(tseries)
+```{r}
+preciosNASDAQ = get.hist.quote(instrument = "^IXIC",quote=c("Cl"))
+plot(preciosNASDAQ )
+?get.hist.quote
+View(preciosNASDAQ )
+
+```
+Interpretación: Los preciosNasdaq presentan una tendencias es decir hay alzas y bajas.
+```{r}
+pdiferenciaNASDAQ = diff(preciosNASDAQ )
+```
+El comando diff sirve para diferenciar una serie
+```{r}
+View(pdiferenciaNASDAQ)
+plot(pdiferenciaNASDAQ)
+```
+Interpretación: Observamos que la primeradiferencia Nasdaq es estacionario en media,con pérdidas de -1000 y fuertes volatilidades.
+Graficando en paralelo:
+```{r}
+par(mfrow=c(1,2))
+plot(preciosNASDAQ)
+plot(pdiferenciaNASDAQ)
+```
+
+Interpretación: El precioNasdaq presenta tendencias como un comportamiento ARIMA, es decir alzas y bajas; por otro lado el primera diferenciaNasdaq es estacionario en media y una fuerte caida en el 2000 de -1000.
+```{r}
+retornoNASDAQ = diff(log(preciosNASDAQ))
+View(retornoNASDAQ)
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(preciosNASDAQ)
+plot(retornoNASDAQ)
+```
+Interpretación: El precioNasdaq presenta tendencias, es decir alzas y bajas; por otro lado el retorno Nasdaq es estacionario en media.
+```{r}
+par(mfrow=c(1,3))
+plot(preciosNASDAQ, main="Precios de NASDAQ")
+plot(pdiferenciaNASDAQ,main="Primera diferencia NASDAQ")
+plot(retornoNASDAQ,main="Retorno NASDAQ")
+```
+Interpretación: El precioNasdaq presenta tendencias a las altas y bajas, la primera diferencia Nasdaq y el retornoNasdaq en promedio son estacionarios pero presentan una volatilidad fuerte, con pérdidas de -1000 y ganancias sobre 500 dólares lo que equivale a pérdidas y ganancias de 10%.
+```{r}
+
+par(mfrow=c(1,3))
+hist(as.ts(preciosNASDAQ))
+hist(as.ts(pdiferenciaNASDAQ))
+hist(as.ts(retornoNASDAQ))
+```
+Interpretación: Observamos que el retornoNasdaq y la primera diferencia son leptocúrticas con k>3, la primera diferencia es asimétrica a la izquierda con s<0 y el retornoNasdaq es simétrica con s=0.Ambas tienen un comportamiento de una T student. Por otro lado el precioNasdaq es asimétrica a la derecha con s>0 y tiene un comportamiento de una log normal. 
+
+El comando as.ts se lee: "como serie de tiempo" y convierte cualquier objeto en una serie temporal
+
+```{r}
+adf.test(preciosNASDAQ)
+```
+```{r}
+adf.test(retornoNASDAQ)
+```
+Observamos que los preciosNasdaq no son estacionarios y el retorno si lo es porque su pvalue es menor a 0.05.
+
+usamos un artificio
+
+```{r}
+precioNASDAQ=as.numeric(preciosNASDAQ)
+pdNASDAQ=diff(precioNASDAQ)
+precioNASDAQ=diffinv(pdNASDAQ)
+pdNASDAQ=diff(precioNASDAQ)
+```
+Vamos a graficar 
+```{r}
+acf(pdNASDAQ)
+```
+
+Interpretación: Observamos que el componente del MA puede ser 1,2,3,7,8,9.
+```{r}
+pacf(pdNASDAQ)
+```
+Interpretación: Observamos que el componente del AR(p) puede ser 1,2,6,7,8,9
+```{r}
+p<- 1:6
+q<- 1:3
+ata=NULL
+datos=NULL
+ata3=NULL
+for(i in p){
+  for(a in q){
+    ata1=print(summary(arma(pdNASDAQ,order = c(i,a)))$aic)
+    ata=c(ata1,ata)
+    ata2=paste(i,a)
+    ata3=c(ata3,ata2)
+    datos=data.frame("ARMA"=ata3,"AIC"=ata)
+    print(datos)
+  }
+}
+```
+
+El mejor modelo es un ARMA(2,1) con un Akaike de 79534.06	.
+
